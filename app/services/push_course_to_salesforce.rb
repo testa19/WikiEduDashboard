@@ -75,13 +75,28 @@ class PushCourseToSalesforce
   end
 
   def editing_in_sandbox_block
-    title_matcher = /Draft your article/
-    @sandbox_block ||= @course.blocks.find { |block| block.title =~ title_matcher }
+    title_matchers = [
+      /Draft your article/, # Title through Spring 2017
+      /Start drafting/ # "Start drafting your contribution" is the new title as of Fall 2017
+    ]
+    @sandbox_block ||= find_block_by_title(title_matchers)
   end
 
   def editing_in_mainspace_block
-    title_matcher = /Begin moving your work to Wikipedia/
-    @mainspace_block ||= @course.blocks.find { |block| block.title =~ title_matcher }
+    title_matchers = [
+      /Begin moving your work to Wikipedia/, # Title through Spring 2017
+      /Move your work to Mainspace/ # New title as of Fall 2017
+    ]
+    @mainspace_block ||= find_block_by_title(title_matchers)
+  end
+
+  def find_block_by_title(title_matchers)
+    title_matchers.each do |title_matcher|
+      match = @course.blocks.find { |block| block.title =~ title_matcher }
+      next unless match
+      return match
+    end
+    return nil
   end
 
   def assignment_date_for(block)
