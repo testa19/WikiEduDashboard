@@ -1,3 +1,4 @@
+
 import React from 'react';
 import OnClickOutside from 'react-onclickoutside';
 import { bindActionCreators } from 'redux';
@@ -9,6 +10,8 @@ const Feedback = React.createClass({
 
   propTypes: {
     fetchFeedback: React.PropTypes.func,
+    postUserFeedback: React.PropTypes.func,
+    deleteUserFeedback: React.PropTypes.func,
     feedback: React.PropTypes.object,
     assignment: React.PropTypes.object.isRequired,
     username: React.PropTypes.string
@@ -18,8 +21,17 @@ const Feedback = React.createClass({
     return {
       show: false,
       fetched: false,
-      feedbackSent: false
+      feedbackSent: false,
+      feedbackInput: ''
     };
+  },
+
+  componentWillMount() {
+    this.props.fetchFeedback(this.titleParam(), this.props.assignment.id);
+  },
+
+  getCurrentUser() {
+    return $('#react_root').data('current_user');
   },
 
   titleParam() {
@@ -45,6 +57,17 @@ const Feedback = React.createClass({
     this.hide();
   },
 
+  handleFeedbackInputChange(event) {
+    this.setState({ feedbackInput: event.target.value });
+  },
+
+  handleFeedbackSubmit(event) {
+    const feedback = this.state.feedbackInput;
+    this.setState({ feedbackInput: '' });
+    this.props.postUserFeedback(this.props.assignment.id, feedback, this.getCurrentUser().id);
+    event.preventDefault();
+  },
+
   handleSubmit(event) {
     const subject = `/revision_feedback?title=${this.titleParam()}`;
     const body = this.input.value;
@@ -58,9 +81,13 @@ const Feedback = React.createClass({
     event.preventDefault();
   },
 
+  handleRemove(id, arrayId) {
+    this.props.deleteUserFeedback(this.props.assignment.id, id, arrayId);
+  },
+
   render() {
+    // Title set based on if the article exists in mainspace
     let button;
-    const titleParam = this.titleParam();
     if (this.state.show) {
       button = <button onClick={this.hide} className="okay icon-close"></button>;
     } else {
@@ -77,18 +104,21 @@ const Feedback = React.createClass({
     }
 
     let modal;
-
-    const data = this.props.feedback[titleParam];
+    const data = this.props.feedback[this.props.assignment.id];
     let rating = '';
     let messages = [];
+    let customMessages = [];
     const feedbackList = [];
+    const userSuggestionList = [];
     let titleElement;
     let feedbackBody = (
       <div className="feedback-body">
         <p>{I18n.t('courses.feedback_loading')}</p>
       </div>
     );
+
     let feedbackForm;
+    let customSuggestionsForm;
 
     if (this.props.assignment.article_id) {
       titleElement = <a className="my-assignment-title" target="_blank" href={this.props.assignment.article_url}>{this.props.assignment.article_title}</a>;
@@ -99,6 +129,7 @@ const Feedback = React.createClass({
     if (data) {
       messages = data.suggestions;
       rating = data.rating;
+      customMessages = data.custom;
 
       for (let i = 0; i < messages.length; i++) {
         feedbackList.push(<li key={i.toString()}>{messages[i].message}</li>);
@@ -107,6 +138,22 @@ const Feedback = React.createClass({
         <form onSubmit={this.handleSubmit}>
           <textarea className="feedback-form" rows="1" cols="150" ref={(input) => this.input = input} placeholder={I18n.t('courses.suggestions_feedback')} />
           {submitFeedback}
+        </form>
+      );
+
+      for (let i = 0; i < customMessages.length; i++) {
+        let deleteButton;
+        if (customMessages[i].userId === this.getCurrentUser().id) {
+          deleteButton = <a className="button dark small" onClick={() => this.handleRemove(customMessages[i].messageId, i)}>{I18n.t('courses.delete_suggestion')}</a>;
+        }
+        userSuggestionList.push(<li key={customMessages[i].messageId}> {customMessages[i].message} {deleteButton} </li>);
+      }
+
+      // Input box to input custom feedback
+      customSuggestionsForm = (
+        <form onSubmit={this.handleFeedbackSubmit}>
+          <textarea className="feedback-form" rows="1" cols="150" onChange={this.handleFeedbackInputChange} value={this.state.feedbackInput} placeholder={I18n.t('courses.user_suggestions_prompt')} />
+          <input className="button dark small" type="submit" value="Add Suggestion" />
         </form>
       );
 
@@ -126,6 +173,12 @@ const Feedback = React.createClass({
             <ul>
               {feedbackList}
             </ul>
+            {feedbackForm}<br />
+            <h5>{I18n.t('courses.user_suggestions')}</h5>
+            <ul>
+              {userSuggestionList}
+            </ul>
+            {customSuggestionsForm}
           </div>
         );
       } else {
@@ -145,7 +198,6 @@ const Feedback = React.createClass({
           {button}
           <h2>Feedback</h2>
           {feedbackBody}
-          {feedbackForm}
         </div>
       );
     }
@@ -160,7 +212,9 @@ const Feedback = React.createClass({
 });
 
 const mapDispatchToProps = dispatch => ({
-  fetchFeedback: bindActionCreators(FeedbackAction, dispatch).fetchFeedback
+  fetchFeedback: bindActionCreators(FeedbackAction, dispatch).fetchFeedback,
+  postUserFeedback: bindActionCreators(FeedbackAction, dispatch).postUserFeedback,
+  deleteUserFeedback: bindActionCreators(FeedbackAction, dispatch).deleteUserFeedback
 });
 
 const mapStateToProps = state => ({
