@@ -26,10 +26,6 @@ const Feedback = React.createClass({
     };
   },
 
-  componentWillMount() {
-    this.props.fetchFeedback(this.titleParam(), this.props.assignment.id);
-  },
-
   getCurrentUser() {
     return $('#react_root').data('current_user');
   },
@@ -44,7 +40,7 @@ const Feedback = React.createClass({
   show() {
     this.setState({ show: true });
     if (!this.state.fetched) {
-      this.props.fetchFeedback(this.titleParam());
+      this.props.fetchFeedback(this.titleParam(), this.props.assignment.id);
       this.setState({ fetched: true });
     }
   },
